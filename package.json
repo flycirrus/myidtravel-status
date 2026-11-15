@@ -1,0 +1,6 @@
+{
+  "name": "myidtravel-status",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mobiles Status-Dashboard für die MyIDTravel Empty-Leg-Pipeline (Vercel)."
+}

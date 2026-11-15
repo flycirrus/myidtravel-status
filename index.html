@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MyIDTravel Status</title>
+<style>
+  :root{
+    --bg:#0f1420; --card:#1a2233; --line:#2a3550; --fg:#e8edf7; --muted:#90a0bf;
+    --ok:#2bd576; --okbg:#10351f; --bad:#ff5c6c; --badbg:#3a1216; --accent:#5aa0ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:16px;max-width:860px;margin:0 auto;-webkit-text-size-adjust:100%}
+  h1{font-size:18px;margin:4px 0 2px} .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+  .banner{border-radius:16px;padding:20px;margin-bottom:14px;display:flex;
+    align-items:center;gap:14px;border:1px solid var(--line)}
+  .banner.ok{background:var(--okbg);border-color:#1c6b3d}
+  .banner.bad{background:var(--badbg);border-color:#7a2730}
+  .dot{width:16px;height:16px;border-radius:50%;flex:0 0 auto}
+  .banner.ok .dot{background:var(--ok);box-shadow:0 0 14px var(--ok)}
+  .banner.bad .dot{background:var(--bad);box-shadow:0 0 14px var(--bad)}
+  .banner .big{font-size:22px;font-weight:700}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .kpi .v{font-size:20px;font-weight:700;margin-top:4px}
+  .kpi .v.warn{color:#ffcb5c}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px;margin-bottom:14px}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.04em}
+  button{background:var(--accent);color:#06101f;border:0;border-radius:12px;
+    padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;width:100%}
+  button:active{transform:translateY(1px)} button:disabled{opacity:.5}
+  input{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);
+    background:var(--bg);color:var(--fg);font-size:16px;margin-bottom:10px}
+  .muted{color:var(--muted)} .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  pre{background:#0a0e18;border:1px solid var(--line);border-radius:10px;padding:10px;
+    overflow:auto;font-size:12px;color:#cfe0ff;white-space:pre;max-height:320px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--card)}
+  .tablewrap{overflow:auto;max-height:420px;border-radius:10px}
+  .route{font-weight:700} .pill{display:inline-block;padding:1px 7px;border-radius:999px;
+    background:#16304f;color:#bcd6ff;font-size:12px}
+  .err{color:var(--bad)} .toggle{font-size:13px;color:var(--accent);cursor:pointer;
+    background:none;width:auto;padding:4px 0;font-weight:600}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin:10px 0 24px}
+  #login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;
+    justify-content:center;padding:24px;z-index:9}
+  #login .box{max-width:340px;width:100%}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#f4f6fb;--card:#fff;--line:#e2e8f3;--fg:#17202e;--muted:#5b6b85;
+      --okbg:#e6f7ee;--badbg:#fdeaec}
+    pre{background:#0c1220;color:#cfe0ff}
+  }
+</style>
+</head>
+<body>
+  <div id="login"><div class="box">
+    <h1>✈️ MyIDTravel Status</h1>
+    <p class="muted">Bitte App-Passwort eingeben.</p>
+    <input id="pw" type="password" placeholder="App-Passwort" autocomplete="current-password">
+    <button onclick="doLogin()">Anmelden</button>
+    <p class="err" id="loginErr" style="display:none;margin-top:10px">Falsches Passwort.</p>
+  </div></div>
+
+  <h1>✈️ MyIDTravel — Empty-Leg Status</h1>
+  <div class="sub">Live-Monitor der Pipeline zum Lufthansa-Server</div>
+
+  <div id="banner" class="banner"><span class="dot"></span>
+    <div><div class="big" id="statusText">lädt…</div>
+    <div class="muted" id="checkedAt"></div></div></div>
+
+  <div class="grid">
+    <div class="kpi"><div class="l">Letzter Push</div><div class="v" id="kPush">–</div></div>
+    <div class="kpi"><div class="l">Flüge online</div><div class="v" id="kRows">–</div></div>
+    <div class="kpi"><div class="l">Verworfen (kein IATA)</div><div class="v" id="kDrop">–</div></div>
+    <div class="kpi"><div class="l">Datei auf LH-SFTP</div><div class="v" id="kRemote" style="font-size:13px">–</div></div>
+  </div>
+
+  <div id="probCard" class="card" style="display:none">
+    <h2>⚠️ Offene Probleme</h2><div id="probs"></div>
+  </div>
+
+  <div class="card"><button id="btn" onclick="refresh()">🔄 Jetzt prüfen</button></div>
+
+  <div class="card">
+    <h2>Hochgeladene CSV — Preview</h2>
+    <div class="muted mono" id="csvMeta" style="margin-bottom:8px"></div>
+    <div class="tablewrap"><table id="csvTbl"><thead></thead><tbody></tbody></table></div>
+    <button class="toggle" id="colToggle" onclick="toggleCols()">alle Spalten anzeigen</button>
+  </div>
+
+  <div class="card">
+    <h2>Cron-Abzug (letzte Läufe)</h2>
+    <pre id="log">lädt…</pre>
+  </div>
+
+  <div class="foot">Automatische Aktualisierung alle 60&nbsp;s · gehostet auf Vercel · Daten via VM</div>
+
+<script>
+const KEY_COLS = ["flightNo","origin","destination","departureDateUTC","seats","aircraftType","fees","currency"];
+let showAll = false, lastCsv = null;
+
+function key(){try{return localStorage.getItem('appkey')||''}catch(e){return ''}}
+function showLogin(){document.getElementById('login').style.display='flex';}
+function doLogin(){
+  const v=document.getElementById('pw').value;
+  try{localStorage.setItem('appkey',v)}catch(e){}
+  document.getElementById('login').style.display='none';
+  document.getElementById('loginErr').style.display='none';
+  refresh();
+}
+
+async function j(u){
+  const r=await fetch(u,{cache:'no-store',headers:{'x-app-key':key()}});
+  if(r.status===401){showLogin();throw new Error('401');}
+  if(!r.ok)throw new Error(r.status);return r.json();
+}
+async function t(u){
+  const r=await fetch(u,{cache:'no-store',headers:{'x-app-key':key()}});
+  if(r.status===401){showLogin();throw new Error('401');}
+  return r.text();
+}
+
+function escapeHtml(x){return String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function setBanner(s){
+  const b=document.getElementById('banner'); const ok=s.status==='OK';
+  b.className='banner '+(ok?'ok':'bad');
+  document.getElementById('statusText').textContent = ok ? '🟢 Läuft alles' : '🔴 Problem erkannt';
+  document.getElementById('checkedAt').textContent = 'zuletzt geprüft: '+s.checked_at;
+}
+function renderStatus(s){
+  setBanner(s);
+  document.getElementById('kPush').textContent = s.facts.last_ok_push;
+  document.getElementById('kRows').textContent = s.facts.rows;
+  const kd=document.getElementById('kDrop');
+  kd.textContent=s.facts.dropped; kd.className='v'+(Number(s.facts.dropped)>0?' warn':'');
+  document.getElementById('kRemote').textContent=s.facts.remote;
+  const pc=document.getElementById('probCard'), pb=document.getElementById('probs');
+  if(s.problems&&s.problems.length){pc.style.display='';
+    pb.innerHTML=s.problems.map(p=>'<div class="err">• '+escapeHtml(p)+'</div>').join('');}
+  else pc.style.display='none';
+}
+function renderCsv(c){
+  lastCsv=c;
+  document.getElementById('csvMeta').textContent =
+    c.exists ? (c.filename+' · '+c.count+' Flüge · '+c.size+' B · '+c.mtime) : 'keine Datei gefunden';
+  const cols=c.columns||[];
+  const idx=showAll?cols.map((_,i)=>i):KEY_COLS.map(k=>cols.indexOf(k)).filter(i=>i>=0);
+  const thead=document.querySelector('#csvTbl thead'), tbody=document.querySelector('#csvTbl tbody');
+  thead.innerHTML='<tr>'+idx.map(i=>'<th>'+escapeHtml(cols[i])+'</th>').join('')+'</tr>';
+  tbody.innerHTML=(c.rows||[]).map(r=>'<tr>'+idx.map(i=>{
+    let v=r[i]===undefined?'':r[i];
+    if(cols[i]==='destination')return '<td class="route">'+escapeHtml(r[cols.indexOf('origin')]||'?')+' → '+escapeHtml(v||'?')+'</td>';
+    if(cols[i]==='origin'&&!showAll)return '';
+    if(cols[i]==='fees')return '<td><span class="pill">'+escapeHtml(v)+' €</span></td>';
+    return '<td>'+escapeHtml(v)+'</td>';
+  }).join('')+'</tr>').join('');
+  document.getElementById('colToggle').textContent=showAll?'nur wichtige Spalten':'alle Spalten anzeigen';
+}
+function toggleCols(){showAll=!showAll; if(lastCsv) renderCsv(lastCsv);}
+
+async function refresh(){
+  const btn=document.getElementById('btn'); btn.disabled=true; btn.textContent='⏳ prüfe…';
+  try{
+    const [s,c,l]=await Promise.all([j('/api/status'),j('/api/csv'),t('/api/log?lines=20')]);
+    renderStatus(s); renderCsv(c); document.getElementById('log').textContent=l.trim()||'(leer)';
+  }catch(e){
+    if(e.message!=='401') document.getElementById('statusText').textContent='⚠️ Abfrage fehlgeschlagen ('+e.message+')';
+  }
+  btn.disabled=false; btn.textContent='🔄 Jetzt prüfen';
+}
+
+if(!key()) showLogin(); else refresh();
+setInterval(()=>{ if(key()) refresh(); }, 60000);
+</script>
+</body>
+</html>
